@@ -182,3 +182,15 @@ idea {
         downloadJavadoc = true
     }
 }
+
+// Geometry invariants run without opening Minecraft or creating a graphics context.
+tasks.register('meshCheck', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.sworldcraft.arcanehorizon.TerrainMeshChecks'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+}
+tasks.named('check') { dependsOn 'meshCheck' }
+
+// Geometry checks are a standalone main program run by meshCheck.
+tasks.named('test', Test) { failOnNoDiscoveredTests = false }

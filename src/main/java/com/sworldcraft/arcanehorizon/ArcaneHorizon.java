@@ -9,6 +9,6 @@ public final class ArcaneHorizon {
     public static final String ID = "arcanehorizon";
     public static final Logger LOG = LogUtils.getLogger();
     public ArcaneHorizon() {
-        LOG.info("Arcane Horizon 0.1.0-alpha: independent terrain sampling prototype");
+        LOG.info("Arcane Horizon 0.3.1-alpha: independent terrain rendering prototype");
     }
 }
