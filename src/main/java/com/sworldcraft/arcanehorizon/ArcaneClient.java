@@ -128,7 +128,7 @@ public final class ArcaneClient {
         event.getDispatcher().register(Commands.literal("arcane")
             .executes(ctx -> message("Arcane Horizon: /arcane status | sample | toggle | render | preview | range <8-48> | brightness | saturation | overlap | culling | clear"))
             .then(Commands.literal("status").executes(ctx -> message(
-                "Arcane Horizon 0.3.1-alpha | Capture: " + enabled + " | Tuiles: "
+                "Arcane Horizon 0.3.2-alpha | Capture: " + enabled + " | Tuiles: "
                 + TILES.size() + "/" + LIMIT + " | Cellules: " + TILES.size() * 256
                 + " | Releves: " + samples + " | Rendu: " + renderEnabled + " | Tuiles soumises: " + visibleTiles
                 + " | Sommets: " + renderedVertices + " | Capture en attente: " + PENDING.size() + " | Portee: " + renderRange + " chunks | Apercu proche: " + preview)))

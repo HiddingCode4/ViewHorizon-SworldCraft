@@ -1,144 +1,103 @@
-# Arcane Horizon — 0.3.1-alpha
+# Arcane Horizon — 0.3.2-alpha
 
-Prototype indépendant SworldCraft — Minecraft **26.3**, NeoForge **26.3.0.102**, **JDK 25 x64**.
+Minecraft **26.3**, NeoForge **26.3.0.102**, JDK **25 x64**.
+Projet indépendant SworldCraft. Aucun code de Distant Horizons n'est inclus.
 
-## Correctif de continuité et de couleurs
+## Changement ciblé après les plaques suspendues
 
-- La limite qui ne gardait que les 512 tuiles les plus proches est supprimée.
-  Toutes les tuiles candidates sont conservées. Au-delà d'un budget souple de
-  240 000 sommets, les tuiles les plus éloignées passent à un niveau moins détaillé.
-  Si même le niveau le plus grossier dépasse ce budget, la couverture reste prioritaire.
-  Cela corrige une cause de terrain absent dans notre code, sans garantir tous les raccords.
-- Feuillage : la couleur de biome brute est atténuée pour approximer la multiplication
-  par la texture des feuilles qui manquait. Facteur de départ : 0,55 ; herbe : 0,78.
-  Ce sont nos approximations, pas des valeurs copiées de Distant Horizons.
-- Réglages de rendu en session : luminosité **0,95**, saturation **0,85**,
-  recouvrement du bord proche **3 chunks** par défaut.
-- Les bornes verticales des tuiles sont mises en cache pour éviter leur recalcul par image.
+Cette version remplace le maillage en colonnes et ses parois de bord par une
+**surface continue**. Les coins sont calculés dans les coordonnées du monde,
+en moyennant les colonnes connues autour du même point. Deux chunks voisins
+utilisent donc exactement la même hauteur sur leur bord commun.
 
-La documentation de l'API Distant Horizons décrit des réglages de luminosité,
-saturation, rayon de prévention du recouvrement et élimination hors champ :
-https://distant-horizons-team.gitlab.io/distant-horizons/com/seibel/distanthorizons/api/interfaces/config/client/IDhApiGraphicsConfig.html
-Notre implémentation est indépendante : son fichier de configuration ne peut pas
-être chargé directement ici et les valeurs ne sont pas interchangeables.
+- Aucun mur vertical artificiel, aucune jupe de bord ajoutée au maillage.
+- Grille uniforme de 4 blocs ; passage uniforme à 8 si le cache dépasse le budget
+  de départ. Ne pas mélanger les pas de grille évite les fissures entre niveaux de détail.
+- Les maillages sont réutilisés, puis reconstruits si une tuile voisine change.
+- Les bornes utilisées pour l'élimination hors champ viennent du maillage final.
+- Les couleurs et commandes de réglage de 0.3.1 sont conservées.
 
-### Réglages facultatifs en jeu
+Il s'agit d'une surface simplifiée et plus lissée, pas d'une reconstruction 3D
+fidèle des arbres ou constructions. Ces modifications retirent deux mécanismes
+pouvant créer des raccords incorrects. Elles ne prouvent pas, à elles seules,
+que tous les artefacts observés en jeu ont disparu.
 
-| Commande | Effet |
-| --- | --- |
-| `/arcane brightness 0.95` | Multiplier la luminosité (0,2 à 1,5) |
-| `/arcane saturation 0.85` | Régler la saturation ; 0 produit du gris (0 à 1,5) |
-| `/arcane overlap 3` | Régler la bande de raccord proche (0 à 8 chunks) |
-| `/arcane culling` | Activer/désactiver l'élimination hors champ, pour diagnostic |
+## Installation et test
 
-Ces valeurs sont appliquées immédiatement et sont réinitialisées au redémarrage.
-Une bande de raccord plus large peut cacher des trous de transition, mais augmente
-les recouvrements avec les blocs proches. Le budget souple peut aussi coûter plus
-que l'ancienne limite stricte ; les FPS restent à mesurer en jeu.
-
-**Les zones inconnues ou absentes du cache ne sont toujours pas inventées.**
-Si un trou correspond à un chunk jamais mémorisé, ces réglages ne pourront pas le remplir.
-La sauvegarde et la génération à distance ne sont pas incluses dans ce correctif.
-Les changements de niveau de détail, la transparence de l'eau et le relief sous les
-surplombs restent des limites du prototype.
-
-## Améliorations après le premier test visuel
-
-- Capture des **256 colonnes** de chaque chunk, au lieu de seulement 16 cellules.
-- Trois niveaux de détail : cellules de **2 × 2 blocs** à proximité (64 cellules
-  par chunk), 4 × 4 à distance intermédiaire et 8 × 8 plus loin.
-- Couleurs de carte des blocs, complétées par les teintes de biome pour l'herbe,
-  plusieurs feuillages et l'eau. C'est une meilleure approximation, pas les textures des blocs.
-- Capture prioritaire des chunks reçus et déchargés. Rafraîchissement périodique
-  dans un rayon adapté à la distance d'affichage, jusqu'à 32 chunks.
-- Budget de capture : au plus 4 chunks par tick ; une limite souple de 3 ms
-  interrompt la boucle après le chunk en cours. Un chunk ne peut pas être interrompu.
-- Bande de transition : le relief simplifié couvre aussi le bord de l'affichage normal,
-  au lieu d'attendre que chaque chunk disparaisse du cache client. Cette bande peut encore
-  provoquer des recouvrements, mais réduit une cause possible de trous.
-- Élimination des tuiles hors du champ de vision. Le budget graphique réduit les
-  niveaux de détail au lieu de supprimer des tuiles déjà sélectionnées.
-- Correctif Gradle `failOnNoDiscoveredTests = false` inclus. Les contrôles de géométrie
-  restent exécutés par la tâche `meshCheck` pendant `build`.
-
-Aucun code de Distant Horizons n'est inclus. Le nom est encore provisoire.
-
-## Installer la mise à jour
-
-Fermer le Minecraft de test. Copier **le contenu du dossier ArcaneHorizon du ZIP**
-dans votre dossier de projet existant contenant `build.gradle`, en acceptant le
-remplacement des fichiers. Votre dossier `.git` n'est pas inclus dans l'archive.
-
-Dans PowerShell, depuis la racine du projet :
+1. Fermer le Minecraft de test.
+2. Copier **le contenu du dossier ArcaneHorizon du ZIP** dans le dossier de votre
+   projet existant contenant `build.gradle`. Accepter le remplacement des fichiers.
+3. Dans PowerShell, depuis ce dossier :
 
 ```powershell
 .\gradlew.bat build
 .\gradlew.bat runClient
 ```
 
-Le JAR produit par un build réussi est `build/libs/arcanehorizon-0.3.1-alpha.jar`.
+4. En jeu, `/arcane status` doit indiquer **0.3.2-alpha**.
+5. Sans shader, explorer une zone à 12 chunks puis, dans la même session,
+   réduire à 4 chunks. Vérifier particulièrement les raccords en tournant la caméra.
+6. `/arcane render` permet de comparer activé/désactivé depuis une position fixe.
 
-## Comparaison visuelle dans une même session
-
-1. Démarrer sans shader ni autre mod de rendu, dans un monde de test.
-2. Régler la distance normale à **12 chunks**, puis attendre environ 30 secondes.
-3. Survoler lentement une zone en faisant des pauses pour mémoriser le relief.
-4. Vérifier `/arcane status` : version 0.3.1-alpha, cache non vide, capture active.
-5. Sans quitter le monde, passer à **4 chunks** puis attendre quelques secondes.
-6. Depuis une position fixe, utiliser `/arcane render` pour comparer le paysage
-   avec/sans le relief mémorisé. Refaire la commande pour le réactiver.
-7. Comparer surtout les raccords, la couverture mémorisée et les couleurs.
-   Les grandes zones jamais parcourues restent nécessairement absentes.
+Le JAR après un build réussi : `build/libs/arcanehorizon-0.3.2-alpha.jar`.
 
 ## Commandes
 
 | Commande | Effet |
 | --- | --- |
-| `/arcane status` | Cache, colonnes, relevés, capture en attente et tuiles sélectionnées |
-| `/arcane sample` | Altitudes et premier matériau du chunk sous le joueur |
+| `/arcane status` | Version, cache, capture, tuiles et sommets sélectionnés |
+| `/arcane sample` | Altitudes du chunk sous le joueur |
 | `/arcane render` | Activer/désactiver le rendu |
 | `/arcane toggle` | Suspendre/reprendre la capture |
-| `/arcane range 32` | Portée demandée entre 8 et 48 chunks, limitée par la projection du jeu |
-| `/arcane preview` | Diagnostic : afficher aussi les reliefs sur les chunks proches chargés |
-| `/arcane clear` | Vider cache et file de capture ; le balayage périodique peut les remplir à nouveau |
+| `/arcane range 32` | Portée demandée de 8 à 48 chunks |
+| `/arcane preview` | Diagnostic de recouvrement des chunks proches |
+| `/arcane brightness 0.95` | Luminosité, de 0,2 à 1,5 |
+| `/arcane saturation 0.85` | Saturation, de 0 à 1,5 |
+| `/arcane overlap 3` | Bande de recouvrement proche, de 0 à 8 chunks |
+| `/arcane culling` | Basculer l'élimination hors champ pour diagnostic |
+| `/arcane clear` | Vider le cache et la file de capture |
 
-`preview` est désactivé par défaut. Il produit volontairement des recouvrements
-pour vérifier la géométrie ; le désactiver après diagnostic.
+Réglages conservés seulement pendant la session. Un nouveau lancement repart
+avec un cache vide : explorer à nouveau avant de réduire la distance.
 
-## Limites restantes
+## Limites
 
-Le cache de 8192 tuiles est uniquement en mémoire et repart à zéro après une
-nouvelle session ou un changement de monde/dimension. Pas de génération distante.
-La file de capture est limitée à 2048 références de chunks ; en cas de déplacement
-très rapide ou de surcharge, des zones peuvent encore manquer.
+Cache en mémoire, limité à 8192 tuiles. Pas de génération distante ni sauvegarde
+entre sessions ou dimensions. Les zones inconnues restent absentes.
+La portée reste limitée par la projection du jeu. Le choix de grille est global
+et peut changer lorsque le cache grandit. Le budget est souple, sans suppression
+arbitraire des tuiles candidates.
 
-Ce moteur représente uniquement la surface supérieure : les grottes, passages
-sous les constructions, façades et dessous des arbres ne sont pas fidèles.
-Les cellules plus grossières regroupent les hauteurs par maximum et moyennent les
-couleurs ; des paliers et changements de détail peuvent rester visibles.
-Les parois externes descendent sous le minimum du chunk pour masquer les bords,
-sans garantir tous les raccords entre chunks de hauteurs différentes.
+Le relief de surface représente les sommets d'arbres comme des hauteurs moyennées.
+Il ne reconstitue ni troncs, ni passages dessous, ni grottes, ni surplombs.
+Les falaises peuvent être adoucies. Pas de textures, transparence de l'eau,
+éclairage dynamique ou brouillard adapté. Les couleurs restent approximatives.
+Compatibilité shaders/autres moteurs et performances non validées.
 
-La transition n'est pas encore fondue, l'eau est opaque, les couleurs sont
-approximatives et l'éclairage est une ombre directionnelle simple. Pas de textures
-ni de brouillard lointain adaptatif. Ne pas attendre la qualité d'un moteur abouti.
-Compatibilité shaders et autres moteurs non validée ; performances à mesurer en jeu.
+## Vérifications effectuées
 
-## Vérifications avant livraison
+Les tests suivants ont été exécutés avec Java 25 et ont réussi :
+- raccords est/ouest et nord/sud entre chunks de relief non uniforme ;
+- raccords aux coordonnées négatives ;
+- couverture complète d'un chunk non vide ;
+- absence de faces verticales artificielles ;
+- reconstruction lorsqu'un voisin apparaît et réutilisation sinon ;
+- absence de géométrie pour l'air, conservation du blanc et immutabilité.
 
-- Tests de géométrie exécutés avec Java 25 : surfaces, parois, coordonnées,
-  opacité, cellules d'air et immutabilité des tuiles — réussis.
-- Toutes les classes Java compilées directement avec Java 25, les classes
-  Minecraft 26.3 et les dépendances NeoForge 26.3.0.102. Pour ce contrôle,
-  deux adaptations d'API documentées de NeoForge ont été appliquées dans un
-  JAR temporaire : héritage de `BaseRenderState` et accès public à
-  `RenderType.create`. Ce JAR de vérification n'est pas livré.
-- Le `build` Gradle complet reste non validé ici : le téléchargement de
-  préparation Minecraft par NeoForm échoue dans cet environnement réseau.
-- Aucun test graphique en jeu n'a été exécuté ici. Le protocole ci-dessus
-  reste nécessaire pour confirmer le rendu réel.
+Toutes les classes Java ont été compilées directement contre Minecraft 26.3
+et les dépendances NeoForge 26.3.0.102, avec un JAR temporaire reproduisant deux
+adaptations de NeoForge : héritage de BaseRenderState et visibilité publique de
+RenderType.create. Ce JAR temporaire n'est pas livré.
 
-## GitHub et provenance
+Le build Gradle complet demeure non validé dans cet environnement à cause du
+téléchargement de préparation Minecraft. Aucun test graphique n'a été effectué ici.
+Les tests ne remplacent pas la vérification visuelle sur votre PC.
 
-Copier les fichiers dans le dépôt existant puis enregistrer les modifications depuis VS Code.
-Aucun envoi GitHub n'a été effectué. Voir `NOTICE.md` et `TEMPLATE_LICENSE.txt`.
+Le correctif `failOnNoDiscoveredTests = false` est inclus ; les vérifications
+propres au projet restent lancées par `meshCheck` pendant `build`.
+
+## Provenance
+
+Voir `NOTICE.md` et `TEMPLATE_LICENSE.txt`. Aucun envoi GitHub n'a été effectué.
+Le fichier RenderPlanner.java conservé pour faciliter la mise à jour des dépôts
+existants n'est plus utilisé par le chemin de rendu principal.

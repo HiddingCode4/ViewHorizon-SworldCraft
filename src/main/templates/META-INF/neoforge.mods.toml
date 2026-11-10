@@ -4,7 +4,7 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 authors="Jordan Pradel"
-description='''Independent terrain LOD prototype. Alpha 0.3.1 renders cached surface meshes with three detail levels, sampled map colors and a transition band. Shader integration and disk persistence are not implemented yet.'''
+description='''Independent continuous-surface terrain prototype. Shared world-space border heights, no artificial vertical skirts. Disk persistence, shader compatibility and full 3D reconstruction are not implemented.'''
 [[dependencies.${mod_id}]]
 modId="neoforge"
 type="required"
