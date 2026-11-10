@@ -83,7 +83,8 @@ public final class ArcaneRenderer {
                 float oz = (float)(tile.chunkZ()*16.0-camera.z);
                 for (int v=0; v<mesh.vertexCount(); v++) {
                     buffer.addVertex(pose, ox+mesh.x(v), (float)(mesh.y(v)-camera.y), oz+mesh.z(v))
-                        .setColor(RenderColor.adjust(mesh.color(v),brightness,saturation));
+                        .setColor(RenderColor.adjust(mesh.color(v),brightness,saturation))
+                        .setUv2(mesh.blockLight(v)<<4,mesh.skyLight(v)<<4);
                 }
             }
         });

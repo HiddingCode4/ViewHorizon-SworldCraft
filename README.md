@@ -1,7 +1,38 @@
-# Arcane Horizon — 0.3.2-alpha
+# Arcane Horizon — 0.3.3-alpha
 
 Minecraft **26.3**, NeoForge **26.3.0.102**, JDK **25 x64**.
 Projet indépendant SworldCraft. Aucun code de Distant Horizons n'est inclus.
+
+## Correctif lumière jour/nuit
+
+Le rendu précédent utilisait un shader de couleur sans lightmap : la neige pouvait
+rester blanche la nuit alors que les chunks normaux étaient sombres.
+
+Cette version ajoute :
+- des relevés séparés de lumière du ciel et de lumière des blocs au-dessus de la surface ;
+- leur transmission dans les attributs lumineux du maillage ;
+- un vertex shader propre au projet, qui multiplie la couleur par la lightmap du jeu ;
+- la liaison explicite de cette lightmap dans notre pipeline.
+
+La lightmap du jeu est actualisée sans devoir reconstruire le relief à chaque
+changement d'heure. Le shader réutilise les interfaces GLSL publiques du jeu par
+inclusion ; leurs sources ne sont pas copiées dans le projet.
+Ce correctif ne traite pas les éventuels trous, l'éclairage exact des faces,
+les textures, la transparence de l'eau ou le brouillard.
+
+### Test ciblé
+
+Dans un monde de test avec les commandes disponibles, conserver la même position :
+
+```text
+/time set day
+/time set night
+```
+
+Le relief simplifié doit s'assombrir avec le terrain normal. Vérifier d'abord
+`/arcane status` : la version doit être **0.3.3-alpha**.
+La compilation GPU du nouveau shader et son résultat visuel restent à confirmer en jeu.
+Les tests CPU ne valident pas un shader sur la carte graphique.
 
 ## Changement ciblé après les plaques suspendues
 
@@ -34,12 +65,12 @@ que tous les artefacts observés en jeu ont disparu.
 .\gradlew.bat runClient
 ```
 
-4. En jeu, `/arcane status` doit indiquer **0.3.2-alpha**.
+4. En jeu, `/arcane status` doit indiquer **0.3.3-alpha**.
 5. Sans shader, explorer une zone à 12 chunks puis, dans la même session,
    réduire à 4 chunks. Vérifier particulièrement les raccords en tournant la caméra.
 6. `/arcane render` permet de comparer activé/désactivé depuis une position fixe.
 
-Le JAR après un build réussi : `build/libs/arcanehorizon-0.3.2-alpha.jar`.
+Le JAR après un build réussi : `build/libs/arcanehorizon-0.3.3-alpha.jar`.
 
 ## Commandes
 
@@ -70,8 +101,7 @@ arbitraire des tuiles candidates.
 
 Le relief de surface représente les sommets d'arbres comme des hauteurs moyennées.
 Il ne reconstitue ni troncs, ni passages dessous, ni grottes, ni surplombs.
-Les falaises peuvent être adoucies. Pas de textures, transparence de l'eau,
-éclairage dynamique ou brouillard adapté. Les couleurs restent approximatives.
+Les falaises peuvent être adoucies. Pas de textures, transparence de l'eau ou brouillard adapté. Les couleurs restent approximatives.
 Compatibilité shaders/autres moteurs et performances non validées.
 
 ## Vérifications effectuées
@@ -90,7 +120,7 @@ adaptations de NeoForge : héritage de BaseRenderState et visibilité publique d
 RenderType.create. Ce JAR temporaire n'est pas livré.
 
 Le build Gradle complet demeure non validé dans cet environnement à cause du
-téléchargement de préparation Minecraft. Aucun test graphique n'a été effectué ici.
+téléchargement de préparation Minecraft. Aucun test graphique ni compilation GPU du shader n'a été effectué ici.
 Les tests ne remplacent pas la vérification visuelle sur votre PC.
 
 Le correctif `failOnNoDiscoveredTests = false` est inclus ; les vérifications

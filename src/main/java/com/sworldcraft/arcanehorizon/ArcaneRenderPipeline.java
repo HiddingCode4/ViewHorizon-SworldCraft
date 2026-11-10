@@ -15,7 +15,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterRenderPipelinesEvent;
 
 /** Opaque color-only geometry: depth test and writes enabled, no vanilla distance fog.
- * Uses the game's standard position/color shader, without redistributing its source.
+ * Uses a project vertex shader and the game lightmap for day/night and block light.
  */
 @EventBusSubscriber(modid = ArcaneHorizon.ID, value = Dist.CLIENT)
 public final class ArcaneRenderPipeline {
@@ -24,16 +24,17 @@ public final class ArcaneRenderPipeline {
         .withBindGroupLayout(BindGroupLayouts.GLOBALS)
         .withBindGroupLayout(BindGroupLayouts.PROJECTION)
         .withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
-        .withVertexShader("core/position_color")
+        .withBindGroupLayout(BindGroupLayouts.SAMPLER2)
+        .withVertexShader(Identifier.fromNamespaceAndPath(ArcaneHorizon.ID,"core/terrain_lit"))
         .withFragmentShader("core/position_color")
-        .withVertexBinding(0,DefaultVertexFormat.POSITION_COLOR)
+        .withVertexBinding(0,DefaultVertexFormat.POSITION_COLOR_LIGHTMAP)
         .withPrimitiveTopology(PrimitiveTopology.QUADS)
         .withColorTargetState(ColorTargetState.DEFAULT)
         .withDepthStencilState(DepthStencilState.DEFAULT)
         .withCull(false)
         .build();
     static final RenderType TERRAIN = RenderType.create("arcanehorizon_terrain",
-        RenderSetup.builder(PIPELINE).createRenderSetup());
+        RenderSetup.builder(PIPELINE).useLightmap().createRenderSetup());
 
     private ArcaneRenderPipeline() {}
     @SubscribeEvent

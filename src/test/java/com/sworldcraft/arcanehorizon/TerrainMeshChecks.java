@@ -38,7 +38,18 @@ public final class TerrainMeshChecks {
         check(SurfaceMesher.build(empty,Map.of(SurfaceMesher.key(5,5),empty),4).vertexCount()==0,"Air generated surfaces");
         check(RenderColor.adjust(0xffffffff,1,0.4f)==0xffffffff,"White color changed hue");
         int[] copy=center.heights();copy[0]=999;check(center.maxHeight()<999,"Tile is mutable");
-        System.out.println("Surface checks passed: shared borders, negative coordinates, complete footprints, no vertical skirts, neighbor invalidation, cache reuse, air, colors, immutability.");
+        int[] litH=new int[256],litC=new int[256],litL=new int[256];String[] litM=new String[256];
+        Arrays.fill(litH,70);Arrays.fill(litC,0xffffffff);Arrays.fill(litM,"minecraft:snow");
+        Arrays.fill(litL,(15<<4)|14);
+        TerrainTile lit=new TerrainTile(0,0,litH,litM,litC,litL);
+        TerrainMesh litMesh=SurfaceMesher.build(lit,Map.of(SurfaceMesher.key(0,0),lit),4);
+        for(int v=0;v<litMesh.vertexCount();v++) {
+            check(litMesh.skyLight(v)==15,"Skylight sample lost");
+            check(litMesh.blockLight(v)==14,"Block light sample lost");
+        }
+        litL[0]=0;
+        check(!lit.sameSurface(litH,litM,litC,litL),"Light changes did not invalidate tile");
+        System.out.println("Surface checks passed: shared borders, negative coordinates, complete footprints, no vertical skirts, neighbor invalidation, cache reuse, air, colors, immutability, sky/block light propagation.");
     }
     private static TerrainTile tile(int x,int z,int base) {
         int[] h=new int[256],c=new int[256];String[] m=new String[256];

@@ -17,6 +17,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.LightLayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -92,7 +93,7 @@ public final class ArcaneClient {
 
     private static void capture(LevelChunk chunk) {
         if(!(chunk.getLevel() instanceof ClientLevel level))return;
-        int[] heights=new int[256], colors=new int[256];
+        int[] heights=new int[256], colors=new int[256], lights=new int[256];
         String[] materials=new String[256];
         BlockPos.MutableBlockPos pos=new BlockPos.MutableBlockPos();
         for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
@@ -113,11 +114,13 @@ public final class ArcaneClient {
                 rgb=BiomeColors.getAverageFoliageColor(level,pos);
             else if(name.equals("minecraft:water"))rgb=BiomeColors.getAverageWaterColor(level,pos);
             colors[i]=RenderColor.surface(rgb==0 && !state.isAir()?0x8a8a8a:rgb&0xffffff,name);
+            pos.set(pos.getX(),y+1,pos.getZ());
+            lights[i]=(level.getBrightness(LightLayer.SKY,pos)<<4)|level.getBrightness(LightLayer.BLOCK,pos);
         }
         long key=((long)chunk.getPos().x()<<32)^(chunk.getPos().z()&0xffffffffL);
         TerrainTile tile=TILES.get(key);
-        if(tile==null || !tile.sameSurface(heights,materials,colors))
-            tile=new TerrainTile(chunk.getPos().x(),chunk.getPos().z(),heights,materials,colors);
+        if(tile==null || !tile.sameSurface(heights,materials,colors,lights))
+            tile=new TerrainTile(chunk.getPos().x(),chunk.getPos().z(),heights,materials,colors,lights);
         TILES.remove(key);TILES.put(key,tile);
         if(TILES.size()>LIMIT)TILES.remove(TILES.keySet().iterator().next());
         samples++;
@@ -128,7 +131,7 @@ public final class ArcaneClient {
         event.getDispatcher().register(Commands.literal("arcane")
             .executes(ctx -> message("Arcane Horizon: /arcane status | sample | toggle | render | preview | range <8-48> | brightness | saturation | overlap | culling | clear"))
             .then(Commands.literal("status").executes(ctx -> message(
-                "Arcane Horizon 0.3.2-alpha | Capture: " + enabled + " | Tuiles: "
+                "Arcane Horizon 0.3.3-alpha | Capture: " + enabled + " | Tuiles: "
                 + TILES.size() + "/" + LIMIT + " | Cellules: " + TILES.size() * 256
                 + " | Releves: " + samples + " | Rendu: " + renderEnabled + " | Tuiles soumises: " + visibleTiles
                 + " | Sommets: " + renderedVertices + " | Capture en attente: " + PENDING.size() + " | Portee: " + renderRange + " chunks | Apercu proche: " + preview)))

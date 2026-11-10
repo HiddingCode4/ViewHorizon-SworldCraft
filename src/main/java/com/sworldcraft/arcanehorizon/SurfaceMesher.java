@@ -12,17 +12,18 @@ public final class SurfaceMesher {
     public static TerrainMesh build(TerrainTile tile,Map<Long,TerrainTile> terrain,int step) {
         if(step!=2&&step!=4&&step!=8)throw new IllegalArgumentException("Invalid grid step");
         int width=16/step;
-        float[] xyz=new float[width*width*4*3];int[] colors=new int[width*width*4];int vertices=0;
+        float[] xyz=new float[width*width*4*3];int[] colors=new int[width*width*4],lights=new int[width*width*4];int vertices=0;
         int wx=tile.chunkX()*16,wz=tile.chunkZ()*16;
         // Cached within this mesh: each shared corner is calculated once.
         float[][] corners=new float[width+1][width+1];
         for(int z=0;z<=width;z++)for(int x=0;x<=width;x++)
             corners[z][x]=corner(terrain,wx+x*step,wz+z*step,step);
         for(int z=0;z<width;z++)for(int x=0;x<width;x++) {
-            long r=0,g=0,b=0;int count=0;
+            long r=0,g=0,b=0;int count=0,sky=0,block=0;
             for(int dz=0;dz<step;dz++)for(int dx=0;dx<step;dx++) {
                 int lx=x*step+dx,lz=z*step+dz;
                 if(!tile.present(lx,lz))continue;
+                int light=tile.light(lx,lz);sky+=(light>>>4)&15;block=Math.max(block,light&15);
                 int color=tile.color(lx,lz);r+=(color>>>16)&255;g+=(color>>>8)&255;b+=color&255;count++;
             }
             if(count==0)continue;
@@ -32,9 +33,10 @@ public final class SurfaceMesher {
             int at=vertices*3;
             float[] quad={x*step,h00,z*step, x*step,h01,(z+1)*step,
                 (x+1)*step,h11,(z+1)*step, (x+1)*step,h10,z*step};
-            System.arraycopy(quad,0,xyz,at,12);Arrays.fill(colors,vertices,vertices+4,color);vertices+=4;
+            System.arraycopy(quad,0,xyz,at,12);Arrays.fill(colors,vertices,vertices+4,color);
+            Arrays.fill(lights,vertices,vertices+4,((sky/count)<<4)|block);vertices+=4;
         }
-        return new TerrainMesh(Arrays.copyOf(xyz,vertices*3),Arrays.copyOf(colors,vertices));
+        return new TerrainMesh(Arrays.copyOf(xyz,vertices*3),Arrays.copyOf(colors,vertices),Arrays.copyOf(lights,vertices));
     }
     private static float corner(Map<Long,TerrainTile> terrain,int wx,int wz,int step) {
         long total=0;int count=0;
