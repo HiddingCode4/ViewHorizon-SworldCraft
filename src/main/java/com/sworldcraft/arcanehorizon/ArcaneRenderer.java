@@ -28,6 +28,7 @@ public final class ArcaneRenderer {
 
     @SubscribeEvent
     public static void extract(ExtractLevelRenderStateEvent event) {
+        if(DhBackend.active())return;
         // Access live world data only during extraction. Drawing uses this immutable snapshot.
         List<DrawTile> visible = new ArrayList<>();
         if (ArcaneClient.renderEnabled) {
@@ -71,6 +72,7 @@ public final class ArcaneRenderer {
 
     @SubscribeEvent
     public static void submit(SubmitCustomGeometryEvent event) {
+        if(DhBackend.active())return;
         List<DrawTile> tiles = event.getLevelRenderState().getRenderData(FRAME);
         if (tiles == null || tiles.isEmpty()) return;
         Vec3 camera = event.getLevelRenderState().cameraRenderState.pos;

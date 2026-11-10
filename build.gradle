@@ -27,6 +27,11 @@ sourceSets.main.resources {
 }
 
 repositories {
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
     // Add here additional repositories if required by some of the dependencies below.
 }
 
@@ -49,6 +54,7 @@ neoForge {
     runs {
         client {
             client()
+            gameDirectory = project.file('runs/client')
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
@@ -111,6 +117,10 @@ configurations {
 }
 
 dependencies {
+    // Official engine remains a distinct runtime mod; no shading or renaming.
+    // Pinned release 3.3.4 for Minecraft 26.3 / NeoForge (Modrinth version TGgEbP9A).
+    compileOnly 'maven.modrinth:distanthorizons:TGgEbP9A'
+    localRuntime 'maven.modrinth:distanthorizons:TGgEbP9A'
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"

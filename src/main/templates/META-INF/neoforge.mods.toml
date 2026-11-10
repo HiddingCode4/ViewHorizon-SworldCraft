@@ -4,7 +4,7 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 authors="Jordan Pradel"
-description='''Independent continuous-surface terrain prototype with observed simplified foliage and game lightmap integration. GPU validation, disk persistence and full 3D world reconstruction remain pending.'''
+description='''SworldCraft integration module powered by the separately installed Distant Horizons engine. Legacy experimental rendering is disabled when the engine is present. Terrain generation, LOD storage and rendering are provided by Distant Horizons and its contributors.'''
 [[dependencies.${mod_id}]]
 modId="neoforge"
 type="required"
@@ -17,3 +17,10 @@ type="required"
 versionRange="${minecraft_version_range}"
 ordering="NONE"
 side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="distanthorizons"
+type="required"
+versionRange="[3.3.4,3.4)"
+ordering="AFTER"
+side="CLIENT"

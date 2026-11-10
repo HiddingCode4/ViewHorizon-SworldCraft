@@ -54,6 +54,7 @@ public final class ArcaneClient {
 
     @SubscribeEvent
     public static void tick(ClientTickEvent.Post event) {
+        if(DhBackend.active())return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != currentLevel) {
             TILES.clear(); PENDING.clear(); cursor = 0; samples = 0; currentLevel = mc.level;
@@ -86,6 +87,7 @@ public final class ArcaneClient {
     public static void chunkUnloaded(ChunkEvent.Unload event) { enqueue(event.getChunk()); }
 
     private static void enqueue(LevelChunk chunk) {
+        if(DhBackend.active())return;
         if(!(chunk.getLevel() instanceof ClientLevel level))return;
         Minecraft.getInstance().execute(() -> {
             if(!enabled || level!=Minecraft.getInstance().level || level!=currentLevel)return;
@@ -162,6 +164,7 @@ public final class ArcaneClient {
 
     @SubscribeEvent
     public static void commands(RegisterClientCommandsEvent event) {
+        if(DhBackend.active())return;
         event.getDispatcher().register(Commands.literal("arcane")
             .executes(ctx -> message("Arcane Horizon: /arcane status | sample | toggle | render | preview | range <8-48> | brightness | saturation | overlap | culling | foliage | clear"))
             .then(Commands.literal("status").executes(ctx -> message(

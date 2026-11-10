@@ -39,6 +39,7 @@ public final class ArcaneRenderPipeline {
     private ArcaneRenderPipeline() {}
     @SubscribeEvent
     public static void register(RegisterRenderPipelinesEvent event) {
+        if(DhBackend.active())return;
         event.registerPipeline(PIPELINE);
     }
 }
