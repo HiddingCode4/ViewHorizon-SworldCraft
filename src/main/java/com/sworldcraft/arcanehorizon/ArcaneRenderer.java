@@ -56,14 +56,16 @@ public final class ArcaneRenderer {
                 if(!ArcaneClient.preview && loaded && chunkDistance<=inner)continue;
                 TerrainMesh mesh=MESHES.mesh(tile,terrain,step);
                 if(mesh.vertexCount()==0)continue;
-                AABB bounds=new AABB(tile.chunkX()*16.0,mesh.minY()-1,tile.chunkZ()*16.0,
-                    tile.chunkX()*16.0+16,mesh.maxY()+1,tile.chunkZ()*16.0+16);
+                TerrainMesh leaves=ArcaneClient.foliage?tile.foliage(chunkDistance>12):null;
+                float top=leaves!=null&&leaves.vertexCount()>0?Math.max(mesh.maxY(),leaves.maxY()):mesh.maxY();
+                AABB bounds=new AABB(tile.chunkX()*16.0-5,mesh.minY()-1,tile.chunkZ()*16.0-5,
+                    tile.chunkX()*16.0+21,top+1,tile.chunkZ()*16.0+21);
                 if(ArcaneClient.culling&&!event.getFrustum().isVisible(bounds))continue;
-                visible.add(new DrawTile(tile,mesh));
+                visible.add(new DrawTile(tile,mesh,leaves));
             }
         }
         ArcaneClient.visibleTiles = visible.size();
-        ArcaneClient.renderedVertices=visible.stream().mapToInt(e -> e.mesh().vertexCount()).sum();
+        ArcaneClient.renderedVertices=visible.stream().mapToInt(e -> e.mesh().vertexCount()+(e.leaves()==null?0:e.leaves().vertexCount())).sum();
         event.getRenderState().setRenderData(FRAME,List.copyOf(visible));
     }
 
@@ -81,13 +83,17 @@ public final class ArcaneRenderer {
                 TerrainMesh mesh = draw.mesh();
                 float ox = (float)(tile.chunkX()*16.0-camera.x);
                 float oz = (float)(tile.chunkZ()*16.0-camera.z);
-                for (int v=0; v<mesh.vertexCount(); v++) {
-                    buffer.addVertex(pose, ox+mesh.x(v), (float)(mesh.y(v)-camera.y), oz+mesh.z(v))
-                        .setColor(RenderColor.adjust(mesh.color(v),brightness,saturation))
-                        .setUv2(mesh.blockLight(v)<<4,mesh.skyLight(v)<<4);
+                for(int part=0;part<2;part++) {
+                    TerrainMesh geometry=part==0?mesh:draw.leaves();
+                    if(geometry==null)continue;
+                    for(int v=0;v<geometry.vertexCount();v++) {
+                        buffer.addVertex(pose,ox+geometry.x(v),(float)(geometry.y(v)-camera.y),oz+geometry.z(v))
+                            .setColor(RenderColor.adjust(geometry.color(v),brightness,saturation))
+                            .setUv2(geometry.blockLight(v)<<4,geometry.skyLight(v)<<4);
+                    }
                 }
             }
         });
     }
-    private record DrawTile(TerrainTile tile,TerrainMesh mesh){}
+    private record DrawTile(TerrainTile tile,TerrainMesh mesh,TerrainMesh leaves){}
 }

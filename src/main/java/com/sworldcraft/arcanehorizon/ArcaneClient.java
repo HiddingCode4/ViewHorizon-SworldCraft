@@ -18,6 +18,8 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -42,6 +44,7 @@ public final class ArcaneClient {
     static float saturation = 0.85f;
     static int overlap = 3;
     static boolean culling = true;
+    static boolean foliage = true;
     static volatile int renderedVertices;
     static List<TerrainTile> snapshot(ClientLevel level) {
         return level == currentLevel ? List.copyOf(TILES.values()) : List.of();
@@ -95,43 +98,74 @@ public final class ArcaneClient {
         if(!(chunk.getLevel() instanceof ClientLevel level))return;
         int[] heights=new int[256], colors=new int[256], lights=new int[256];
         String[] materials=new String[256];
+        CanopyColumn[] canopy=new CanopyColumn[256];
         BlockPos.MutableBlockPos pos=new BlockPos.MutableBlockPos();
         for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
             int i=z*16+x;
             int y=chunk.getHeight(Heightmap.Types.WORLD_SURFACE,x,z);
-            heights[i]=y;
-            pos.set(chunk.getPos().getMinBlockX()+x,y,chunk.getPos().getMinBlockZ()+z);
-            var state=chunk.getBlockState(pos);
-            String name=BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
-            materials[i]=name;
-            int rgb=state.getMapColor(level,pos).col;
-            // Surface colors, with biome tint where it has a clear meaning.
-            if(name.equals("minecraft:grass_block") || name.equals("minecraft:short_grass")
-                || name.equals("minecraft:tall_grass"))rgb=BiomeColors.getAverageGrassColor(level,pos);
-            else if(name.equals("minecraft:spruce_leaves"))rgb=0x619961;
-            else if(name.equals("minecraft:birch_leaves"))rgb=0x80a755;
-            else if(name.contains("leaves") && !name.contains("cherry") && !name.contains("pale_oak"))
-                rgb=BiomeColors.getAverageFoliageColor(level,pos);
-            else if(name.equals("minecraft:water"))rgb=BiomeColors.getAverageWaterColor(level,pos);
-            colors[i]=RenderColor.surface(rgb==0 && !state.isAir()?0x8a8a8a:rgb&0xffffff,name);
-            pos.set(pos.getX(),y+1,pos.getZ());
+            int wx=chunk.getPos().getMinBlockX()+x,wz=chunk.getPos().getMinBlockZ()+z;
+            pos.set(wx,y,wz);
+            BlockState surface=chunk.getBlockState(pos);
+            boolean snow=BuiltInRegistries.BLOCK.getKey(surface.getBlock()).toString().equals("minecraft:snow");
+            int leafY=y;
+            BlockState leaves=surface;
+            if(snow){pos.set(wx,y-1,wz);leaves=chunk.getBlockState(pos);leafY=y-1;}
+            if(leaves.is(BlockTags.LEAVES)) {
+                int ground=chunk.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z);
+                int bottom=Math.max(chunk.getMinY(),Math.min(ground,y)-64);
+                while(ground>bottom) {
+                    pos.set(wx,ground,wz);BlockState candidate=chunk.getBlockState(pos);
+                    boolean snowOnLeaves=false;
+                    if(BuiltInRegistries.BLOCK.getKey(candidate.getBlock()).toString().equals("minecraft:snow")) {
+                        pos.set(wx,ground-1,wz);snowOnLeaves=chunk.getBlockState(pos).is(BlockTags.LEAVES);
+                    }
+                    if(!candidate.isAir()&&!candidate.is(BlockTags.LEAVES)&&!candidate.is(BlockTags.LOGS)&&!snowOnLeaves)break;
+                    ground--;
+                }
+                pos.set(wx,ground,wz);BlockState groundState=chunk.getBlockState(pos);
+                if(!groundState.isAir()&&!groundState.is(BlockTags.LEAVES)&&!groundState.is(BlockTags.LOGS)) {
+                    pos.set(wx,leafY,wz);
+                    int leafColor=sampleColor(level,pos,leaves);
+                    pos.set(wx,leafY+1,wz);
+                    int leafLight=(level.getBrightness(LightLayer.SKY,pos)<<4)|level.getBrightness(LightLayer.BLOCK,pos);
+                    String leafName=BuiltInRegistries.BLOCK.getKey(leaves.getBlock()).toString();
+                    canopy[i]=new CanopyColumn(leafY+1,Math.max(ground+1,leafY-4),leafColor,leafLight,leafName.contains("spruce"),snow);
+                    y=ground;surface=groundState;
+                }
+            }
+            heights[i]=y;pos.set(wx,y,wz);
+            materials[i]=BuiltInRegistries.BLOCK.getKey(surface.getBlock()).toString();
+            colors[i]=sampleColor(level,pos,surface);
+            pos.set(wx,y+1,wz);
             lights[i]=(level.getBrightness(LightLayer.SKY,pos)<<4)|level.getBrightness(LightLayer.BLOCK,pos);
         }
         long key=((long)chunk.getPos().x()<<32)^(chunk.getPos().z()&0xffffffffL);
         TerrainTile tile=TILES.get(key);
-        if(tile==null || !tile.sameSurface(heights,materials,colors,lights))
-            tile=new TerrainTile(chunk.getPos().x(),chunk.getPos().z(),heights,materials,colors,lights);
+        if(tile==null || !tile.sameSurface(heights,materials,colors,lights,canopy))
+            tile=new TerrainTile(chunk.getPos().x(),chunk.getPos().z(),heights,materials,colors,lights,canopy);
         TILES.remove(key);TILES.put(key,tile);
         if(TILES.size()>LIMIT)TILES.remove(TILES.keySet().iterator().next());
         samples++;
     }
 
+    private static int sampleColor(ClientLevel level,BlockPos pos,BlockState state) {
+        String name=BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
+        int rgb=state.getMapColor(level,pos).col;
+        if(name.equals("minecraft:grass_block")||name.equals("minecraft:short_grass")||name.equals("minecraft:tall_grass"))
+            rgb=BiomeColors.getAverageGrassColor(level,pos);
+        else if(name.equals("minecraft:spruce_leaves"))rgb=0x619961;
+        else if(name.equals("minecraft:birch_leaves"))rgb=0x80a755;
+        else if(state.is(BlockTags.LEAVES)&&!name.contains("cherry")&&!name.contains("pale_oak"))rgb=BiomeColors.getAverageFoliageColor(level,pos);
+        else if(name.equals("minecraft:water"))rgb=BiomeColors.getAverageWaterColor(level,pos);
+        return RenderColor.surface(rgb==0&&!state.isAir()?0x8a8a8a:rgb&0xffffff,name);
+    }
+
     @SubscribeEvent
     public static void commands(RegisterClientCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("arcane")
-            .executes(ctx -> message("Arcane Horizon: /arcane status | sample | toggle | render | preview | range <8-48> | brightness | saturation | overlap | culling | clear"))
+            .executes(ctx -> message("Arcane Horizon: /arcane status | sample | toggle | render | preview | range <8-48> | brightness | saturation | overlap | culling | foliage | clear"))
             .then(Commands.literal("status").executes(ctx -> message(
-                "Arcane Horizon 0.3.3-alpha | Capture: " + enabled + " | Tuiles: "
+                "Arcane Horizon 0.4.0-alpha | Capture: " + enabled + " | Tuiles: "
                 + TILES.size() + "/" + LIMIT + " | Cellules: " + TILES.size() * 256
                 + " | Releves: " + samples + " | Rendu: " + renderEnabled + " | Tuiles soumises: " + visibleTiles
                 + " | Sommets: " + renderedVertices + " | Capture en attente: " + PENDING.size() + " | Portee: " + renderRange + " chunks | Apercu proche: " + preview)))
@@ -166,6 +200,9 @@ public final class ArcaneClient {
             .then(Commands.literal("culling").executes(ctx -> {
                 culling=!culling;
                 return message("Elimination hors champ: "+culling);
+            }))
+            .then(Commands.literal("foliage").executes(ctx -> {
+                foliage=!foliage;return message("Feuillage simplifie: "+foliage);
             }))
             .then(Commands.literal("toggle").executes(ctx -> {
                 enabled = !enabled; return message("Capture du terrain: " + enabled);

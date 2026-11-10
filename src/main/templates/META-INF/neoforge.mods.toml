@@ -4,7 +4,7 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 authors="Jordan Pradel"
-description='''Independent continuous-surface prototype with shared border heights and game lightmap integration. Shader GPU validation, disk persistence and full 3D reconstruction remain pending.'''
+description='''Independent continuous-surface terrain prototype with observed simplified foliage and game lightmap integration. GPU validation, disk persistence and full 3D world reconstruction remain pending.'''
 [[dependencies.${mod_id}]]
 modId="neoforge"
 type="required"

@@ -8,11 +8,18 @@ public final class TerrainTile {
     private final int chunkX,chunkZ,minHeight,maxHeight;
     private final int[] heights,colors,lights;
     private final String[] materials;
+    private final CanopyColumn[] canopy;
+    private final TerrainMesh foliage,coarseFoliage;
     public TerrainTile(int chunkX,int chunkZ,int[] heights,String[] materials,int[] colors) {
         this(chunkX,chunkZ,heights,materials,colors,openSky());
     }
     private static int[] openSky(){int[] l=new int[256];Arrays.fill(l,240);return l;}
     public TerrainTile(int chunkX,int chunkZ,int[] heights,String[] materials,int[] colors,int[] lights) {
+        this(chunkX,chunkZ,heights,materials,colors,lights,new CanopyColumn[256]);
+    }
+    public TerrainTile(int chunkX,int chunkZ,int[] heights,String[] materials,int[] colors,int[] lights,CanopyColumn[] canopy) {
+        if(canopy.length!=256)throw new IllegalArgumentException("256 canopy slots required");
+        this.canopy=canopy.clone();
         if(lights.length!=256)throw new IllegalArgumentException("256 light samples required");
         if(heights.length!=256||materials.length!=256||colors.length!=256)
             throw new IllegalArgumentException("256 columns required");
@@ -20,6 +27,7 @@ public final class TerrainTile {
         this.heights=heights.clone();this.materials=materials.clone();this.colors=colors.clone();this.lights=lights.clone();
         minHeight=Arrays.stream(this.heights).min().orElse(0);
         maxHeight=Arrays.stream(this.heights).max().orElse(0);
+        foliage=FoliageMesher.build(this);coarseFoliage=FoliageMesher.build(this,8);
     }
     public int chunkX(){return chunkX;}
     public int chunkZ(){return chunkZ;}
@@ -28,6 +36,12 @@ public final class TerrainTile {
     public int minHeight(){return minHeight;}
     public int maxHeight(){return maxHeight;}
     int height(int x,int z){return heights[z*16+x];}
+    CanopyColumn canopy(int x,int z){return canopy[z*16+x];}
+    public TerrainMesh foliage(){return foliage;}
+    public TerrainMesh foliage(boolean coarse){return coarse?coarseFoliage:foliage;}
+    public boolean sameSurface(int[] h,String[] m,int[] c,int[] l,CanopyColumn[] trees){
+        return sameSurface(h,m,c,l)&&Arrays.equals(canopy,trees);
+    }
     int light(int x,int z){return lights[z*16+x];}
     int color(int x,int z){return colors[z*16+x];}
     boolean present(int x,int z){

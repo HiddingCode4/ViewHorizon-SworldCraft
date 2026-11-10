@@ -49,7 +49,32 @@ public final class TerrainMeshChecks {
         }
         litL[0]=0;
         check(!lit.sameSurface(litH,litM,litC,litL),"Light changes did not invalidate tile");
-        System.out.println("Surface checks passed: shared borders, negative coordinates, complete footprints, no vertical skirts, neighbor invalidation, cache reuse, air, colors, immutability, sky/block light propagation.");
+        // Sparse known data must not drop its complete cell merely because one
+        // of the initial corner sampling windows contains no valid columns.
+        int[] sparseH=new int[256],sparseC=new int[256];String[] sparseM=new String[256];
+        Arrays.fill(sparseM,"minecraft:air");sparseH[4*16+4]=64;sparseC[4*16+4]=0xff69804f;sparseM[4*16+4]="minecraft:grass_block";
+        TerrainTile sparse=new TerrainTile(0,0,sparseH,sparseM,sparseC);
+        TerrainMesh sparseMesh=SurfaceMesher.build(sparse,Map.of(SurfaceMesher.key(0,0),sparse),8);
+        check(sparseMesh.vertexCount()==4,"Sparse populated surface cell disappeared");
+        check(center.foliage().vertexCount()==0,"Foliage invented on a leaf-free tile");
+        int[] treeH=new int[256],treeC=new int[256],treeL=new int[256];String[] treeM=new String[256];
+        Arrays.fill(treeH,64);Arrays.fill(treeC,0xff69804f);Arrays.fill(treeL,240);Arrays.fill(treeM,"minecraft:grass_block");
+        CanopyColumn[] canopies=new CanopyColumn[256];
+        Arrays.fill(canopies,new CanopyColumn(80,75,0xff365c36,240,true,true));
+        TerrainTile forest=new TerrainTile(0,0,treeH,treeM,treeC,treeL,canopies);
+        TerrainMesh crown=forest.foliage();
+        check(crown.vertexCount()>0,"Observed foliage not represented");
+        check(forest.foliage(true).vertexCount()<crown.vertexCount(),"Far foliage not simplified");
+        for(int v=0;v<crown.vertexCount();v++) {
+            check(Float.isFinite(crown.x(v))&&Float.isFinite(crown.y(v))&&Float.isFinite(crown.z(v)),"Invalid foliage vertex");
+            check(crown.y(v)>=65&&crown.y(v)<=80.2f,"Foliage detached from sampled height interval");
+            check(crown.skyLight(v)==15,"Foliage lost skylight");
+        }
+        TerrainTile sameForest=new TerrainTile(0,0,treeH,treeM,treeC,treeL,canopies);
+        check(sameForest.foliage().vertexCount()==crown.vertexCount(),"Foliage layout is unstable");
+        for(int v=0;v<crown.vertexCount();v++)check(sameForest.foliage().x(v)==crown.x(v)
+            &&sameForest.foliage().y(v)==crown.y(v)&&sameForest.foliage().z(v)==crown.z(v),"Foliage moved between identical captures");
+        System.out.println("Surface checks passed: shared borders, negative coordinates, complete footprints, no vertical skirts, neighbor invalidation, cache reuse, air, colors, immutability, sky/block light propagation, sparse cells, observed foliage, stable crowns, far simplification.");
     }
     private static TerrainTile tile(int x,int z,int base) {
         int[] h=new int[256],c=new int[256];String[] m=new String[256];

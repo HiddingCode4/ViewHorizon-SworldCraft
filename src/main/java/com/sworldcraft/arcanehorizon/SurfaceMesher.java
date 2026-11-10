@@ -42,13 +42,18 @@ public final class SurfaceMesher {
         long total=0;int count=0;
         // Symmetric, global footprint. Both sides of a border include the same
         // columns, including at negative world coordinates and four-chunk junctions.
-        int half=step/2;
-        for(int dz=-half;dz<half;dz++)for(int dx=-half;dx<half;dx++) {
+        // If a sparse populated cell has no samples in the initial corner
+        // footprint, expand symmetrically. The same corner still has one global result.
+        for(int radius=step/2;radius<=step;radius*=2) {
+        total=0;count=0;
+        for(int dz=-radius;dz<radius;dz++)for(int dx=-radius;dx<radius;dx++) {
             int x=wx+dx,z=wz+dz;
             TerrainTile t=terrain.get(key(Math.floorDiv(x,16),Math.floorDiv(z,16)));
             int lx=Math.floorMod(x,16),lz=Math.floorMod(z,16);
             if(t!=null&&t.present(lx,lz)){total+=t.height(lx,lz)+1;count++;}
         }
-        return count==0?Float.NaN:(float)total/count;
+        if(count>0)return (float)total/count;
+        }
+        return Float.NaN;
     }
 }
