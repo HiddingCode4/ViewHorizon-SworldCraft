@@ -38,8 +38,8 @@ public final class ArcaneClient {
         }
         if (!enabled || mc.level == null || mc.player == null || mc.isPaused()) return;
         // Main-thread reads only. One chunk per tick, never request generation.
-        int cx = mc.player.chunkPosition().x + cursor % WIDTH - RADIUS;
-        int cz = mc.player.chunkPosition().z + cursor / WIDTH - RADIUS;
+        int cx = mc.player.chunkPosition().x() + cursor % WIDTH - RADIUS;
+        int cz = mc.player.chunkPosition().z() + cursor / WIDTH - RADIUS;
         cursor = (cursor + 1) % (WIDTH * WIDTH);
         LevelChunk loaded = mc.level.getChunkSource().getChunk(cx, cz, ChunkStatus.FULL, false);
         if (loaded == null) return;
@@ -69,7 +69,7 @@ public final class ArcaneClient {
                     chunk.getPos().getMinBlockZ() + bestZ);
             materials[index] = BuiltInRegistries.BLOCK.getKey(chunk.getBlockState(pos).getBlock()).toString();
         }
-        return new TerrainTile(chunk.getPos().x, chunk.getPos().z, heights, materials);
+        return new TerrainTile(chunk.getPos().x(), chunk.getPos().z(), heights, materials);
     }
 
     @SubscribeEvent
@@ -89,7 +89,7 @@ public final class ArcaneClient {
             .then(Commands.literal("sample").executes(ctx -> {
                 Minecraft mc = Minecraft.getInstance();
                 if (mc.player == null) return message("Entre dans un monde pour tester.");
-                int cx = mc.player.chunkPosition().x, cz = mc.player.chunkPosition().z;
+                int cx = mc.player.chunkPosition().x(), cz = mc.player.chunkPosition().z();
                 TerrainTile tile = TILES.get(((long) cx << 32) ^ (cz & 0xffffffffL));
                 if (tile == null) return message("Chunk pas encore releve: attends 15 secondes.");
                 return message("Chunk " + cx + ", " + cz + " | 16 cellules | Y: "
@@ -100,8 +100,11 @@ public final class ArcaneClient {
 
     private static int message(String text) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) mc.player.displayClientMessage(Component.literal(text), false);
-        else ArcaneHorizon.LOG.info(text);
+        if (mc.player != null) {
+            mc.gui.hud.getChat().addClientSystemMessage(Component.literal(text));
+        } else {
+            ArcaneHorizon.LOG.info(text);
+        }
         return 1;
     }
 }
